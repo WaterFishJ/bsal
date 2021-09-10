@@ -30,6 +30,24 @@ if GetDepend(['PKG_BSAL_SRV_NUS']):
 	src += Split("""
 		profiles/service/bsal_uart/bsal_srv_uart.c
 		""")
+
+if GetDepend(['PKG_BSAL_SRV_LBS']):
+	path += [cwd + '/profiles/service/bsal_lbs']
+	src += Split("""
+		profiles/service/bsal_lbs/bsal_srv_lbs.c
+		""")
+
+if GetDepend(['PKG_BSAL_SRV_DIS']):
+	path += [cwd + '/profiles/service/bsal_dis']
+	src += Split("""
+		profiles/service/bsal_dis/bsal_srv_dis.c
+		""")
+
+if GetDepend(['PKG_BSAL_SRV_HRS']):
+	path += [cwd + '/profiles/service/bsal_hrs']
+	src += Split("""
+		profiles/service/bsal_hrs/bsal_srv_hrs.c
+		""")
 		
 if GetDepend(['PKG_BSAL_SAMPLE_BAS_ONLY']):
 	src += Split("""
@@ -42,6 +60,14 @@ elif GetDepend(['PKG_BSAL_SAMPLE_BAS_BLUFI_COMBINE']):
 elif GetDepend(['PKG_BSAL_SAMPLE_NUS_ONLY']):
     src += Split("""
 		samples/ble_nus_app.c
+		""")
+elif GetDepend(['PKG_BSAL_SAMPLE_LBS_ONLY']):
+    src += Split("""
+		samples/ble_lbs_app.c
+		""")
+elif GetDepend(['PKG_BSAL_SAMPLE_HRS_ONLY']):
+    src += Split("""
+		samples/ble_hrs_app.c
 		""")
 
 		
