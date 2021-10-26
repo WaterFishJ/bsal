@@ -6,6 +6,7 @@
  * Change Logs:
  * Date           Author       Notes
  * 2021-09-27     WaterFishJ   the first version
+ * 2021-10-26     WaterFishJ   complete all characteristics
  */
 
 #ifndef __BSAL_SRV_DIS_H__
@@ -17,6 +18,19 @@ extern "C" {
 #include "stdint.h"
 #include "stdbool.h"
 
+/**
+*   Optional characteristics in DIS
+*   How to use:
+*
+*   Comment the macro definition to indicate that this characteristics is not used:
+*   //#define DIS_USING_SERIAL_NUMBER_STRING
+*   //#define DIS_USING_SOFTWARE_REVISION_STRING
+*   
+*   Uncomment the macro definition to indicate that this characteristics is used:
+*   #define DIS_USING_SERIAL_NUMBER_STRING
+*   #define DIS_USING_SOFTWARE_REVISION_STRING
+*
+*/
 #define DIS_USING_MANUFACTURER_NAME_STRING
 #define DIS_USING_MODEL_NUMBER_STRING
 #define DIS_USING_SERIAL_NUMBER_STRING

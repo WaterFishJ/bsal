@@ -6,6 +6,7 @@
  * Change Logs:
  * Date           Author       Notes
  * 2021-09-27     WaterFishJ   the first version
+ * 2021-10-26     WaterFishJ   complete all characteristics
  */
 
 #include <string.h>
@@ -30,63 +31,63 @@ static void dis_profile_callback(void *p)
         if (MANUFACTURER_NAME_STRING_VALUE_INDEX == p_param->off_handle)
         {
             bsal_srv_write_data(p_param->stack_ptr, p_param->start_handle, p_param->off_handle,
-            sizeof(dis_config.manufacturer_name_string), dis_config.manufacturer_name_string);
+            strlen((const char *)dis_config.manufacturer_name_string), dis_config.manufacturer_name_string);
         }
         #endif
         #ifdef DIS_USING_MODEL_NUMBER_STRING
         if (MODEL_NUMBER_STRING_VALUE_INDEX == p_param->off_handle)
         {
             bsal_srv_write_data(p_param->stack_ptr, p_param->start_handle, p_param->off_handle,
-            sizeof(dis_config.model_number_string), dis_config.model_number_string);
+            strlen((const char *)dis_config.model_number_string), dis_config.model_number_string);
         }
         #endif
         #ifdef DIS_USING_SERIAL_NUMBER_STRING
         if (SERIAL_NUMBER_STRING_VALUE_INDEX == p_param->off_handle)
         {
             bsal_srv_write_data(p_param->stack_ptr, p_param->start_handle, p_param->off_handle,
-            sizeof(dis_config.serial_number_string), dis_config.serial_number_string);
+            strlen((const char *)dis_config.serial_number_string), dis_config.serial_number_string);
         }
         #endif
         #ifdef DIS_USING_HARDWARE_REVISION_STRING
         if (HARDWARE_REVISION_STRING_VALUE_INDEX == p_param->off_handle)
         {
             bsal_srv_write_data(p_param->stack_ptr, p_param->start_handle, p_param->off_handle,
-            sizeof(dis_config.hardware_revision_string), dis_config.hardware_revision_string);
+            strlen((const char *)dis_config.hardware_revision_string), dis_config.hardware_revision_string);
         }
         #endif
         #ifdef DIS_USING_FIRMWARE_REVISION_STRING
         if (FIRMWARE_REVISION_STRING_VALUE_INDEX == p_param->off_handle)
         {
             bsal_srv_write_data(p_param->stack_ptr, p_param->start_handle, p_param->off_handle,
-            sizeof(dis_config.firmware_revision_string), dis_config.firmware_revision_string);
+            strlen((const char *)dis_config.firmware_revision_string), dis_config.firmware_revision_string);
         }
         #endif
         #ifdef DIS_USING_SOFTWARE_REVISION_STRING
         if (SOFTWARE_REVISION_STRING_VALUE_INDEX == p_param->off_handle)
         {
             bsal_srv_write_data(p_param->stack_ptr, p_param->start_handle, p_param->off_handle,
-            sizeof(dis_config.software_revision_string), dis_config.software_revision_string);
+            strlen((const char *)dis_config.software_revision_string), dis_config.software_revision_string);
         }
         #endif
         #ifdef DIS_USING_SYSTEM_ID
         if (SYSTEM_ID_VALUE_INDEX == p_param->off_handle)
         {
             bsal_srv_write_data(p_param->stack_ptr, p_param->start_handle, p_param->off_handle,
-            sizeof(dis_config.system_id), dis_config.system_id);
+            strlen((const char *)dis_config.system_id), dis_config.system_id);
         }
         #endif
         #ifdef DIS_USING_IEEE_R_C_DATA_LIST
         if (IEEE_R_C_DATA_LIST_VALUE_INDEX == p_param->off_handle)
         {
             bsal_srv_write_data(p_param->stack_ptr, p_param->start_handle, p_param->off_handle,
-            sizeof(dis_config.IEEE_R_C_data_list), dis_config.IEEE_R_C_data_list);
+            strlen((const char *)dis_config.IEEE_R_C_data_list), dis_config.IEEE_R_C_data_list);
         }
         #endif
         #ifdef DIS_USING_PNP_ID
         if (PNP_ID_VALUE_INDEX == p_param->off_handle)
         {
             bsal_srv_write_data(p_param->stack_ptr, p_param->start_handle, p_param->off_handle,
-            sizeof(dis_config.PnP_id), dis_config.PnP_id);
+            strlen((const char *)dis_config.PnP_id), dis_config.PnP_id);
         }
         #endif
         is_app_cb = true;
@@ -99,7 +100,8 @@ static void dis_profile_callback(void *p)
 
 void bsal_le_dis_svr_init(void *stack_ptr, void *app_callback)
 {
-    struct bsal_gatt_app_srv_def ble_svc_hid_defs[] =
+    int i;
+    struct bsal_gatt_app_srv_def ble_svc_dis_defs[] =
     {
         {
             /*** Device Information Service. */
@@ -197,7 +199,7 @@ void bsal_le_dis_svr_init(void *stack_ptr, void *app_callback)
             0, /* No more services. */
         },
     };
-    bsal_stack_le_srv_reg_func(stack_ptr, &ble_svc_hid_defs, (P_SRV_GENERAL_CB *)dis_profile_callback);
+    bsal_stack_le_srv_reg_func(stack_ptr, &ble_svc_dis_defs, (P_SRV_GENERAL_CB *)dis_profile_callback);
     pfn_bas_cb = (P_SRV_GENERAL_CB)app_callback;
 }
 
