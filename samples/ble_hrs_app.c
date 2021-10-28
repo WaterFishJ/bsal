@@ -34,7 +34,7 @@ bsal_dis_config_t dis_cfg =
 bsal_hrs_mdata_t hrs_mdata = {0};
 uint8_t heart_rate_flag = 0;
 uint8_t sensor_location = 1;
-uint8_t control_point = 0;
+uint8_t control_point = 1;
 bsal_hrs_config_t hrs_cfg =
 {
     .mdata = &hrs_mdata,
@@ -147,6 +147,20 @@ static void bsal_app_profile_callback(void *p)
     }
 }
 
+static void bsal_hrs_profile_callback(void *p)
+{
+    bsal_callbak_data_t *bsal_param = (bsal_callbak_data_t *)p;
+    if (bsal_param->msg_type == BSAL_CALLBACK_TYPE_WRITE_CHAR_VALUE)
+    {
+        if (control_point == 0)
+        {
+            bsal_osif_printf_info("====clear energy expended====\n");
+            control_point = 1;
+            hrs_mdata.energy_expended_field = 0;
+        }
+    }
+}
+
 static void bsal_ble_loop(void *p_param)
 {
     uint16_t heart_rate = 90;
@@ -157,12 +171,6 @@ static void bsal_ble_loop(void *p_param)
         
         hrs_mdata.energy_status = BSAL_HRS_ENERGY_PRESENT;
         hrs_mdata.energy_expended_field += 10;
-        if (control_point == 0)
-        {
-            bsal_osif_printf_info("====clear energy expended====\n");
-            control_point = 1;
-            hrs_mdata.energy_expended_field = 0;
-        }
         if (heart_rate_flag == 1)
         {
             if (heart_rate <= 120)
@@ -203,7 +211,7 @@ int bsal_hrs_app(void)
     bsal_stack_le_srv_begin(stack_ptr, 2, bsal_app_profile_callback);  //will add 2 service
     //4. hrs_init
     bsal_hrs_data_init(&hrs_cfg);
-    bsal_le_hrs_svr_init(stack_ptr, bsal_app_profile_callback); //add heart rate servcie
+    bsal_le_hrs_svr_init(stack_ptr, bsal_hrs_profile_callback); //add heart rate servcie
     //5. dis_init
     bsal_dis_data_init(&dis_cfg);
     bsal_le_dis_svr_init(stack_ptr, bsal_app_profile_callback); //add device information servcie
