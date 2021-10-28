@@ -30,50 +30,58 @@ static void dis_profile_callback(void *p)
     {
         if (dis_index.manufacturer_name_string_index == p_param->off_handle)
         {
+            is_app_cb = true;
             bsal_srv_write_data(p_param->stack_ptr, p_param->start_handle, p_param->off_handle,
             strlen((const char *)dis_config.manufacturer_name_string), dis_config.manufacturer_name_string);
         }
         if (dis_index.model_number_string_index == p_param->off_handle)
         {
+            is_app_cb = true;
             bsal_srv_write_data(p_param->stack_ptr, p_param->start_handle, p_param->off_handle,
             strlen((const char *)dis_config.model_number_string), dis_config.model_number_string);
         }
         if (dis_index.serial_number_string_index == p_param->off_handle)
         {
+            is_app_cb = true;
             bsal_srv_write_data(p_param->stack_ptr, p_param->start_handle, p_param->off_handle,
             strlen((const char *)dis_config.serial_number_string), dis_config.serial_number_string);
         }
         if (dis_index.hardware_revision_string_index == p_param->off_handle)
         {
+            is_app_cb = true;
             bsal_srv_write_data(p_param->stack_ptr, p_param->start_handle, p_param->off_handle,
             strlen((const char *)dis_config.hardware_revision_string), dis_config.hardware_revision_string);
         }
         if (dis_index.firmware_revision_string_index == p_param->off_handle)
         {
+            is_app_cb = true;
             bsal_srv_write_data(p_param->stack_ptr, p_param->start_handle, p_param->off_handle,
             strlen((const char *)dis_config.firmware_revision_string), dis_config.firmware_revision_string);
         }
         if (dis_index.software_revision_string_index == p_param->off_handle)
         {
+            is_app_cb = true;
             bsal_srv_write_data(p_param->stack_ptr, p_param->start_handle, p_param->off_handle,
             strlen((const char *)dis_config.software_revision_string), dis_config.software_revision_string);
         }
         if (dis_index.system_id_index == p_param->off_handle)
         {
+            is_app_cb = true;
             bsal_srv_write_data(p_param->stack_ptr, p_param->start_handle, p_param->off_handle,
             8, dis_config.system_id);
         }
         if (dis_index.IEEE_R_C_data_list_index == p_param->off_handle)
         {
+            is_app_cb = true;
             bsal_srv_write_data(p_param->stack_ptr, p_param->start_handle, p_param->off_handle,
             strlen((const char *)dis_config.IEEE_R_C_data_list), dis_config.IEEE_R_C_data_list);
         }
         if (dis_index.PnP_id_index == p_param->off_handle)
         {
+            is_app_cb = true;
             bsal_srv_write_data(p_param->stack_ptr, p_param->start_handle, p_param->off_handle,
             7, dis_config.PnP_id);
         }
-        is_app_cb = true;
     }
     if (is_app_cb && (pfn_bas_cb != NULL))
     {
@@ -106,7 +114,7 @@ void bsal_le_dis_svr_init(void *stack_ptr, void *app_callback)
     ble_svc_dis_defs[0].type = BSAL_GATT_UUID_PRIMARY_SERVICE;
     ble_svc_dis_defs[0].uuid = BSAL_UUID16_DECLARE(GATT_UUID_DEVICE_INFORMATION);
         
-    if (cha != NULL)
+    if (cha != NULL && cha_uuid != NULL)
     {
         uint8_t i = 0;
         uint8_t index = 0;

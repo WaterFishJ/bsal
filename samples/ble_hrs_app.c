@@ -6,6 +6,7 @@
  * Change Logs:
  * Date           Author       Notes
  * 2021-09-10     WaterFishJ   the first version
+ * 2021-10-28     WaterFishJ   add dis
  */
 
 
@@ -14,13 +15,33 @@
 #include <string.h>
 #include "bsal_osif.h"
 #include "bsal_srv_hrs.h"
+#include "bsal_srv_dis.h"
 
 #define BSAL_STACK_NAME PKG_BSAL_STACK_NAME
 
 static void *bsal_stack_ptr = NULL;
 static uint16_t bsal_app_conn_handle;
-static uint8_t heart_rate_flag = 0;
 static rt_uint8_t gap_conn_state = BSAL_GAP_CONN_STATE_CONNECTED;
+
+uint8_t manufacturer[] = "rt_thread";
+uint8_t model[] = "pca10056";
+bsal_dis_config_t dis_cfg = 
+{
+    .manufacturer_name_string = manufacturer,
+    .model_number_string = model,
+};
+
+bsal_hrs_mdata_t hrs_mdata = {0};
+uint8_t heart_rate_flag = 0;
+uint8_t sensor_location = 1;
+uint8_t control_point = 0;
+bsal_hrs_config_t hrs_cfg =
+{
+    .mdata = &hrs_mdata,
+    .cccd = &heart_rate_flag,
+    .sensor_location = &sensor_location,
+    .control_point = &control_point,
+};
 
 static void bsa_app_set_adv_data(void *stack_ptr)
 {
@@ -36,7 +57,6 @@ static void bsa_app_set_adv_data(void *stack_ptr)
 static void bsal_app_all_callback(void *stack_ptr, uint8_t cb_layer, uint16_t cb_sub_event, uint8_t value_length, void *value)
 {
     T_BSAL_GAP_MSG_DATA  *bsal_gap_msg_data = (T_BSAL_GAP_MSG_DATA *)value;
-    uint8_t bd_addr[6];
     switch (cb_layer)
     {
     case BSAL_CB_LAYER_GAP:
@@ -114,12 +134,10 @@ static void bsal_app_profile_callback(void *p)
             if (cccbits & BSAL_GATT_CCC_NOTIFY)
             {
                 bsal_osif_printf_info("=========NOTIFY ENABLE from %x===data cccd %x====%x=====\r\n", bsal_param->off_handle, cccbits, bsal_param->srv_uuid.u16.value);
-                heart_rate_flag = 1;
             }
             else
             {
                 bsal_osif_printf_info("========NOTIFY DISABLE from %x===data cccd %x====%x=====\r\n", bsal_param->off_handle, cccbits, bsal_param->srv_uuid.u16.value);
-                heart_rate_flag = 0;
             }
         }
     }
@@ -131,14 +149,20 @@ static void bsal_app_profile_callback(void *p)
 
 static void bsal_ble_loop(void *p_param)
 {
-    static uint8_t hrm[2];
-    hrm[0] = 0x06;
-
-    uint8_t heart_rate = 90;
+    uint16_t heart_rate = 90;
     while (1)
     {
         bsal_osif_delay(1000);
         bsal_osif_printf_info("====hello world===%d=\r\n", heart_rate_flag);
+        
+        hrs_mdata.energy_status = BSAL_HRS_ENERGY_PRESENT;
+        hrs_mdata.energy_expended_field += 10;
+        if (control_point == 0)
+        {
+            bsal_osif_printf_info("====clear energy expended====\n");
+            control_point = 1;
+            hrs_mdata.energy_expended_field = 0;
+        }
         if (heart_rate_flag == 1)
         {
             if (heart_rate <= 120)
@@ -149,8 +173,9 @@ static void bsal_ble_loop(void *p_param)
             {
                 heart_rate = 90;
             }
-            hrm[1] = heart_rate;
-            bsal_hrs_send_notify_level(bsal_stack_ptr, bsal_app_conn_handle, hrm);
+            hrs_mdata.sensor_status = BSAL_HRS_SENSOR_STATUS_CONTACT;
+            hrs_mdata.heart_rate_field = heart_rate;
+            bsal_hrs_send_notify_level(bsal_stack_ptr, bsal_app_conn_handle, &hrs_mdata);
         }
     }
 }
@@ -174,11 +199,14 @@ int bsal_hrs_app(void)
     //2. bond type
     bsal_set_device_le_bond_type(stack_ptr, false, BSAL_NO_INPUT, BSAL_NO_OUTPUT, BSAL_GAP_AUTHEN_BIT_NO_BONDING, false);
     //set the bond flag:
-
     //3. service begin
-    bsal_stack_le_srv_begin(stack_ptr, 1, bsal_app_profile_callback);  //will add 1 service
-    //4. bas_init
-    bsal_le_hrs_svr_init(stack_ptr, bsal_app_profile_callback); //add battery servcie
+    bsal_stack_le_srv_begin(stack_ptr, 2, bsal_app_profile_callback);  //will add 2 service
+    //4. hrs_init
+    bsal_hrs_data_init(&hrs_cfg);
+    bsal_le_hrs_svr_init(stack_ptr, bsal_app_profile_callback); //add heart rate servcie
+    //5. dis_init
+    bsal_dis_data_init(&dis_cfg);
+    bsal_le_dis_svr_init(stack_ptr, bsal_app_profile_callback); //add device information servcie
 
     //5. srv_end
     bsal_stack_le_srv_end(stack_ptr);    //end srv add
