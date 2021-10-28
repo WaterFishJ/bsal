@@ -6,7 +6,7 @@
  * Change Logs:
  * Date           Author       Notes
  * 2021-09-27     WaterFishJ   the first version
- * 2021-10-26     WaterFishJ   complete all characteristics
+ * 2021-10-27     WaterFishJ   complete all characteristics
  */
 
 #include <string.h>
@@ -16,7 +16,8 @@
 #include "bsal_osif.h"
 #include "bsal_srv_dis.h"
 
-bsal_dis_config_t dis_config = {NULL};
+static bsal_dis_config_t dis_config = {NULL};
+static bsal_dis_data_index_t dis_index = {0};
 
 static P_SRV_GENERAL_CB pfn_bas_cb = NULL;
 
@@ -27,69 +28,51 @@ static void dis_profile_callback(void *p)
 
     if (p_param->msg_type == BSAL_CALLBACK_TYPE_READ_CHAR_VALUE)
     {
-        #ifdef DIS_USING_MANUFACTURER_NAME_STRING
-        if (MANUFACTURER_NAME_STRING_VALUE_INDEX == p_param->off_handle)
+        if (dis_index.manufacturer_name_string_index == p_param->off_handle)
         {
             bsal_srv_write_data(p_param->stack_ptr, p_param->start_handle, p_param->off_handle,
             strlen((const char *)dis_config.manufacturer_name_string), dis_config.manufacturer_name_string);
         }
-        #endif
-        #ifdef DIS_USING_MODEL_NUMBER_STRING
-        if (MODEL_NUMBER_STRING_VALUE_INDEX == p_param->off_handle)
+        if (dis_index.model_number_string_index == p_param->off_handle)
         {
             bsal_srv_write_data(p_param->stack_ptr, p_param->start_handle, p_param->off_handle,
             strlen((const char *)dis_config.model_number_string), dis_config.model_number_string);
         }
-        #endif
-        #ifdef DIS_USING_SERIAL_NUMBER_STRING
-        if (SERIAL_NUMBER_STRING_VALUE_INDEX == p_param->off_handle)
+        if (dis_index.serial_number_string_index == p_param->off_handle)
         {
             bsal_srv_write_data(p_param->stack_ptr, p_param->start_handle, p_param->off_handle,
             strlen((const char *)dis_config.serial_number_string), dis_config.serial_number_string);
         }
-        #endif
-        #ifdef DIS_USING_HARDWARE_REVISION_STRING
-        if (HARDWARE_REVISION_STRING_VALUE_INDEX == p_param->off_handle)
+        if (dis_index.hardware_revision_string_index == p_param->off_handle)
         {
             bsal_srv_write_data(p_param->stack_ptr, p_param->start_handle, p_param->off_handle,
             strlen((const char *)dis_config.hardware_revision_string), dis_config.hardware_revision_string);
         }
-        #endif
-        #ifdef DIS_USING_FIRMWARE_REVISION_STRING
-        if (FIRMWARE_REVISION_STRING_VALUE_INDEX == p_param->off_handle)
+        if (dis_index.firmware_revision_string_index == p_param->off_handle)
         {
             bsal_srv_write_data(p_param->stack_ptr, p_param->start_handle, p_param->off_handle,
             strlen((const char *)dis_config.firmware_revision_string), dis_config.firmware_revision_string);
         }
-        #endif
-        #ifdef DIS_USING_SOFTWARE_REVISION_STRING
-        if (SOFTWARE_REVISION_STRING_VALUE_INDEX == p_param->off_handle)
+        if (dis_index.software_revision_string_index == p_param->off_handle)
         {
             bsal_srv_write_data(p_param->stack_ptr, p_param->start_handle, p_param->off_handle,
             strlen((const char *)dis_config.software_revision_string), dis_config.software_revision_string);
         }
-        #endif
-        #ifdef DIS_USING_SYSTEM_ID
-        if (SYSTEM_ID_VALUE_INDEX == p_param->off_handle)
+        if (dis_index.system_id_index == p_param->off_handle)
         {
             bsal_srv_write_data(p_param->stack_ptr, p_param->start_handle, p_param->off_handle,
-            strlen((const char *)dis_config.system_id), dis_config.system_id);
+            8, dis_config.system_id);
         }
-        #endif
-        #ifdef DIS_USING_IEEE_R_C_DATA_LIST
-        if (IEEE_R_C_DATA_LIST_VALUE_INDEX == p_param->off_handle)
+        if (dis_index.IEEE_R_C_data_list_index == p_param->off_handle)
         {
             bsal_srv_write_data(p_param->stack_ptr, p_param->start_handle, p_param->off_handle,
             strlen((const char *)dis_config.IEEE_R_C_data_list), dis_config.IEEE_R_C_data_list);
         }
-        #endif
-        #ifdef DIS_USING_PNP_ID
-        if (PNP_ID_VALUE_INDEX == p_param->off_handle)
+        if (dis_index.PnP_id_index == p_param->off_handle)
         {
             bsal_srv_write_data(p_param->stack_ptr, p_param->start_handle, p_param->off_handle,
-            strlen((const char *)dis_config.PnP_id), dis_config.PnP_id);
+            7, dis_config.PnP_id);
         }
-        #endif
         is_app_cb = true;
     }
     if (is_app_cb && (pfn_bas_cb != NULL))
@@ -98,109 +81,171 @@ static void dis_profile_callback(void *p)
     }
 }
 
+uint8_t bsal_dis_count_cha(void)
+{
+    uint8_t i = 0;
+    int *p = (int *)&dis_config;
+    for (uint8_t j = 0; j < 9; j++)
+    {
+        if (*(p + j) != NULL)
+        {
+            i++;
+        }
+    }
+    return i;
+}
+
 void bsal_le_dis_svr_init(void *stack_ptr, void *app_callback)
 {
-    int i;
-    struct bsal_gatt_app_srv_def ble_svc_dis_defs[] =
+    uint8_t cha_count = bsal_dis_count_cha();
+    bsal_gatt_chr_def_t *cha = bsal_osif_malloc(sizeof(bsal_gatt_chr_def_t) * (cha_count + 1));
+    bsal_uuid_any_t *cha_uuid = bsal_osif_malloc(sizeof(bsal_uuid_any_t) * cha_count);
+
+    struct bsal_gatt_app_srv_def ble_svc_dis_defs[2] = {0};
+    /*** Device Information Service. */
+    ble_svc_dis_defs[0].type = BSAL_GATT_UUID_PRIMARY_SERVICE;
+    ble_svc_dis_defs[0].uuid = BSAL_UUID16_DECLARE(GATT_UUID_DEVICE_INFORMATION);
+        
+    if (cha != NULL)
     {
+        uint8_t i = 0;
+        uint8_t index = 0;
+        
+        /*** Manufacturer Name String characteristic */
+        if (dis_config.manufacturer_name_string != NULL && i < cha_count)
         {
-            /*** Device Information Service. */
-            .type = BSAL_GATT_UUID_PRIMARY_SERVICE,
-            .uuid = BSAL_UUID16_DECLARE(GATT_UUID_DEVICE_INFORMATION),
-            .characteristics = (bsal_gatt_chr_def_t[])
-            {
-                #ifdef DIS_USING_MANUFACTURER_NAME_STRING
-                {
-                    /*** Manufacturer Name String characteristic */
-                    .uuid = BSAL_UUID16_DECLARE(GATT_UUID_CHAR_MANUFACTURER_NAME_STRING),
-                    .properties = BSAL_ATT_P_READ,
-                    .permission = BSAL_GATT_PERM_READ_NONE,
-                    .value_length = 10,
-                },
-                #endif
-                #ifdef DIS_USING_MODEL_NUMBER_STRING
-                {
-                    /*** Model Number String characteristic */
-                    .uuid = BSAL_UUID16_DECLARE(GATT_UUID_CHAR_MODEL_NUMBER_STRING),
-                    .properties = BSAL_ATT_P_READ,
-                    .permission = BSAL_GATT_PERM_READ_NONE,
-                    .value_length = 10,
-                },
-                #endif
-                #ifdef DIS_USING_SERIAL_NUMBER_STRING
-                {
-                    /*** Serial Number String characteristic */
-                    .uuid = BSAL_UUID16_DECLARE(GATT_UUID_CHAR_SERIAL_NUMBER_STRING),
-                    .properties = BSAL_ATT_P_READ,
-                    .permission = BSAL_GATT_PERM_READ_NONE,
-                    .value_length = 10,
-                },
-                #endif
-                #ifdef DIS_USING_HARDWARE_REVISION_STRING
-                {
-                    /*** Hardware Revision String characteristic */
-                    .uuid = BSAL_UUID16_DECLARE(GATT_UUID_CHAR_HARDWARE_REVISION_STRING),
-                    .properties = BSAL_ATT_P_READ,
-                    .permission = BSAL_GATT_PERM_READ_NONE,
-                    .value_length = 10,
-                },
-                #endif
-                #ifdef DIS_USING_FIRMWARE_REVISION_STRING
-                {
-                    /*** Firmware Revision String characteristic */
-                    .uuid = BSAL_UUID16_DECLARE(GATT_UUID_CHAR_FIRMWARE_REVISION_STRING),
-                    .properties = BSAL_ATT_P_READ,
-                    .permission = BSAL_GATT_PERM_READ_NONE,
-                    .value_length = 10,
-                },
-                #endif
-                #ifdef DIS_USING_SOFTWARE_REVISION_STRING
-                {
-                    /*** Software Revision String characteristic */
-                    .uuid = BSAL_UUID16_DECLARE(GATT_UUID_CHAR_SOFTWARE_REVISION_STRING),
-                    .properties = BSAL_ATT_P_READ,
-                    .permission = BSAL_GATT_PERM_READ_NONE,
-                    .value_length = 10,
-                },
-                #endif
-                #ifdef DIS_USING_SYSTEM_ID
-                {
-                    /*** System ID characteristic */
-                    .uuid = BSAL_UUID16_DECLARE(GATT_UUID_CHAR_SYSTEM_ID),
-                    .properties = BSAL_ATT_P_READ,
-                    .permission = BSAL_GATT_PERM_READ_NONE,
-                    .value_length = 10,
-                },
-                #endif
-                #ifdef DIS_USING_IEEE_R_C_DATA_LIST
-                {
-                    /*** IEEE 11073-20601 Regulatory Certification Data List characteristic */
-                    .uuid = BSAL_UUID16_DECLARE(GATT_UUID_CHAR_IEEE_R_C_DATA_LIST),
-                    .properties = BSAL_ATT_P_READ,
-                    .permission = BSAL_GATT_PERM_READ_NONE,
-                    .value_length = 10,
-                },
-                #endif
-                #ifdef DIS_USING_PNP_ID
-                {
-                    /*** PnP ID characteristic */
-                    .uuid = BSAL_UUID16_DECLARE(GATT_UUID_CHAR_PNP_ID),
-                    .properties = BSAL_ATT_P_READ,
-                    .permission = BSAL_GATT_PERM_READ_NONE,
-                    .value_length = 7,
-                },
-                #endif
-                {
-                    0, /* No more characteristics in this service. */
-                }
-            },
-        },
+            index += 2;
+            cha_uuid[i].u_type = BSAL_UUID_TYPE_16BIT;
+            cha_uuid[i].u16.u_type = BSAL_UUID_TYPE_16BIT;
+            cha_uuid[i].u16.value = GATT_UUID_CHAR_MANUFACTURER_NAME_STRING;
+            cha[i].uuid = &cha_uuid[i];
+            cha[i].properties = BSAL_ATT_P_READ;
+            cha[i].permission = BSAL_GATT_PERM_READ_NONE;
+            cha[i].value_length = 10;
+            dis_index.manufacturer_name_string_index = index;
+            i++;
+        }
+        /*** Model Number String characteristic */
+        if (dis_config.model_number_string != NULL && i < cha_count)
         {
-            0, /* No more services. */
-        },
-    };
+            index += 2;
+            cha_uuid[i].u_type = BSAL_UUID_TYPE_16BIT;
+            cha_uuid[i].u16.u_type = BSAL_UUID_TYPE_16BIT;
+            cha_uuid[i].u16.value = GATT_UUID_CHAR_MODEL_NUMBER_STRING;
+            cha[i].uuid = &cha_uuid[i];
+            cha[i].properties = BSAL_ATT_P_READ;
+            cha[i].permission = BSAL_GATT_PERM_READ_NONE;
+            cha[i].value_length = 10;
+            dis_index.model_number_string_index = index;
+            i++;
+        }
+        /*** Serial Number String characteristic */
+        if (dis_config.serial_number_string != NULL && i < cha_count)
+        {
+            index += 2;
+            cha_uuid[i].u_type = BSAL_UUID_TYPE_16BIT;
+            cha_uuid[i].u16.u_type = BSAL_UUID_TYPE_16BIT;
+            cha_uuid[i].u16.value = GATT_UUID_CHAR_SERIAL_NUMBER_STRING;
+            cha[i].uuid = &cha_uuid[i];
+            cha[i].properties = BSAL_ATT_P_READ;
+            cha[i].permission = BSAL_GATT_PERM_READ_NONE;
+            cha[i].value_length = 10;
+            dis_index.serial_number_string_index = index;
+            i++;
+        }
+        /*** Hardware Revision String characteristic */
+        if (dis_config.hardware_revision_string != NULL && i < cha_count)
+        {
+            index += 2;
+            cha_uuid[i].u_type = BSAL_UUID_TYPE_16BIT;
+            cha_uuid[i].u16.u_type = BSAL_UUID_TYPE_16BIT;
+            cha_uuid[i].u16.value = GATT_UUID_CHAR_HARDWARE_REVISION_STRING;
+            cha[i].uuid = &cha_uuid[i];
+            cha[i].properties = BSAL_ATT_P_READ;
+            cha[i].permission = BSAL_GATT_PERM_READ_NONE;
+            cha[i].value_length = 10;
+            dis_index.hardware_revision_string_index = index;
+            i++;
+        }
+        /*** Firmware Revision String characteristic */
+        if (dis_config.firmware_revision_string != NULL && i < cha_count)
+        {
+            index += 2;
+            cha_uuid[i].u_type = BSAL_UUID_TYPE_16BIT;
+            cha_uuid[i].u16.u_type = BSAL_UUID_TYPE_16BIT;
+            cha_uuid[i].u16.value = GATT_UUID_CHAR_FIRMWARE_REVISION_STRING;
+            cha[i].uuid = &cha_uuid[i];
+            cha[i].properties = BSAL_ATT_P_READ;
+            cha[i].permission = BSAL_GATT_PERM_READ_NONE;
+            cha[i].value_length = 10;
+            dis_index.firmware_revision_string_index = index;
+            i++;
+        }
+        /*** Software Revision String characteristic */
+        if (dis_config.software_revision_string != NULL && i < cha_count)
+        {
+            index += 2;
+            cha_uuid[i].u_type = BSAL_UUID_TYPE_16BIT;
+            cha_uuid[i].u16.u_type = BSAL_UUID_TYPE_16BIT;
+            cha_uuid[i].u16.value = GATT_UUID_CHAR_SOFTWARE_REVISION_STRING;
+            cha[i].uuid = &cha_uuid[i];
+            cha[i].properties = BSAL_ATT_P_READ;
+            cha[i].permission = BSAL_GATT_PERM_READ_NONE;
+            cha[i].value_length = 10;
+            dis_index.software_revision_string_index = index;
+            i++;
+        }
+        /*** System ID characteristic */
+        if (dis_config.system_id != NULL && i < cha_count)
+        {
+            index += 2;
+            cha_uuid[i].u_type = BSAL_UUID_TYPE_16BIT;
+            cha_uuid[i].u16.u_type = BSAL_UUID_TYPE_16BIT;
+            cha_uuid[i].u16.value = GATT_UUID_CHAR_SYSTEM_ID;
+            cha[i].uuid = &cha_uuid[i];
+            cha[i].properties = BSAL_ATT_P_READ;
+            cha[i].permission = BSAL_GATT_PERM_READ_NONE;
+            cha[i].value_length = 8;
+            dis_index.system_id_index = index;
+            i++;
+        }
+        /*** IEEE 11073-20601 Regulatory Certification Data List characteristic */
+        if (dis_config.IEEE_R_C_data_list != NULL && i < cha_count)
+        {
+            index += 2;
+            cha_uuid[i].u_type = BSAL_UUID_TYPE_16BIT;
+            cha_uuid[i].u16.u_type = BSAL_UUID_TYPE_16BIT;
+            cha_uuid[i].u16.value = GATT_UUID_CHAR_IEEE_R_C_DATA_LIST;
+            cha[i].uuid = &cha_uuid[i];
+            cha[i].properties = BSAL_ATT_P_READ;
+            cha[i].permission = BSAL_GATT_PERM_READ_NONE;
+            cha[i].value_length = 10;
+            dis_index.IEEE_R_C_data_list_index = index;
+            i++;
+        }
+        /*** PnP ID characteristic */
+        if (dis_config.PnP_id != NULL && i < cha_count)
+        {
+            index += 2;
+            cha_uuid[i].u_type = BSAL_UUID_TYPE_16BIT;
+            cha_uuid[i].u16.u_type = BSAL_UUID_TYPE_16BIT;
+            cha_uuid[i].u16.value = GATT_UUID_CHAR_PNP_ID;
+            cha[i].uuid = &cha_uuid[i];
+            cha[i].properties = BSAL_ATT_P_READ;
+            cha[i].permission = BSAL_GATT_PERM_READ_NONE;
+            cha[i].value_length = 7;
+            dis_index.PnP_id_index = index;
+            i++;
+        }
+        
+        ble_svc_dis_defs[0].characteristics = cha;
+    }
+    
     bsal_stack_le_srv_reg_func(stack_ptr, &ble_svc_dis_defs, (P_SRV_GENERAL_CB *)dis_profile_callback);
     pfn_bas_cb = (P_SRV_GENERAL_CB)app_callback;
+    
+    bsal_osif_free(cha);
+    bsal_osif_free(cha_uuid);
 }
 
 void bsal_dis_data_init(bsal_dis_config_t *config)
@@ -208,3 +253,5 @@ void bsal_dis_data_init(bsal_dis_config_t *config)
     BSAL_ASSERT_PTR(config);
     memcpy(&dis_config, config, sizeof(bsal_dis_config_t));
 }
+
+
